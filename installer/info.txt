@@ -1,0 +1,17 @@
+LocalNetChanger - Kurulum Öncesi Bilgi
+======================================
+
+Bu yazılım GNU Genel Kamu Lisansı (GPL) sürüm 3 veya (tercihinize bağlı
+olarak) daha sonraki bir sürüm koşulları altında dağıtılmaktadır.
+
+Kuruluma devam ederek lisans koşullarını kabul etmiş olursunuz.
+
+Tam lisans metni bir sonraki adımda gösterilecektir.
+Kurulum sonrası Program Files\LocalNetChanger\LICENSE.txt dosyasından
+ve https://www.gnu.org/licenses/gpl-3.0.html adresinden erişebilirsiniz.
+
+LocalNetChanger yönetici yetkisi gerektirir (ağ ayarlarını değiştirmek için).
+
+.NET 8 Desktop Runtime gereklidir (yaklaşık 50 MB, bir kez kurulur).
+Çoğu güncel Windows 11 sisteminde zaten yüklüdür.
+Yoksa: https://dotnet.microsoft.com/download/dotnet/8.0

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>LocalNetChanger</AssemblyName>
+    <RootNamespace>LocalNetChanger</RootNamespace>
+    <Version>1.0.5</Version>
+    <Company>LocalNetChanger</Company>
+    <Product>LocalNetChanger</Product>
+    <Description>Windows ağ IP değiştirici</Description>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <DefaultItemExcludes>$(DefaultItemExcludes);build/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="icon.ico" Condition="Exists('icon.ico')" />
+    <Content Include="icon.ico" Condition="Exists('icon.ico')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <Target Name="GenerateAppIcon" BeforeTargets="PrepareForBuild" Inputs="icon.png" Outputs="icon.ico">
+    <Exec Command="dotnet run --project &quot;$(ProjectDir)build\IconGenerator\IconGenerator.csproj&quot; -c Release --no-restore -- &quot;$(ProjectDir)icon.png&quot; &quot;$(ProjectDir)icon.ico&quot;" />
+  </Target>
+
+</Project>

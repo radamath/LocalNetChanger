@@ -1,0 +1,20 @@
+<Project Sdk="WixToolset.Sdk/7.0.0">
+
+  <PropertyGroup>
+    <OutputName>LocalNetChanger-Setup-1.0.5</OutputName>
+    <OutputPath>..\..\dist\</OutputPath>
+    <Cultures>tr-TR;en-US</Cultures>
+    <PublishDir>..\..\publish\win-x64</PublishDir>
+    <Platform>x64</Platform>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" Version="7.0.0" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="7.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <BindPath Include="$(PublishDir)" BindName="PublishDir" />
+  </ItemGroup>
+
+</Project>

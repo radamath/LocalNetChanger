@@ -1,0 +1,33 @@
+# Build outputs
+**/bin/
+**/obj/
+publish/
+dist/
+installer/staging/
+installer/Bootstrap/payload.zip
+installer/LocalNetChanger.generated.sed
+
+# IDE / OS
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+Thumbs.db
+Desktop.ini
+
+# Secrets
+.env
+.env.*
+*.pfx
+*.key
+credentials.json
+
+# WiX / installer artifacts
+**/*.wixpdb
+**/*.wixobj
+
+# Logs / temp
+*.log
+*.tmp

@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <?define AppExe="LocalNetChanger.exe" ?>
+  <?define OpenSettingsArg="--open-settings" ?>
+  <?define TrayOnlyArg="--tray-only" ?>
+
+  <Package
+    Name="LocalNetChanger"
+    Manufacturer="LocalNetChanger"
+    Version="1.0.5.0"
+    UpgradeCode="B8E4F2A1-9C3D-4E5F-A1B2-3C4D5E6F7081"
+    Scope="perMachine">
+
+    <SummaryInformation
+      Description="Windows ag IP degistirici"
+      Keywords="Installer" />
+
+    <MajorUpgrade
+      DowngradeErrorMessage="Daha yeni bir LocalNetChanger surumu zaten yuklu." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="AppIcon" SourceFile="..\..\LocalNetChanger\icon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+
+    <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT" Value="LocalNetChanger basariyla kuruldu." />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="LocalNetChanger'i simdi baslat" />
+    <Property Id="WixShellExecTarget" Value="[#AppExeFile]" />
+    <Property Id="WixShellExecTargetArgs" Value="$(var.OpenSettingsArg)" />
+
+    <Feature Id="MainFeature" Title="LocalNetChanger" Level="1" Description="Ana uygulama dosyalari">
+      <ComponentGroupRef Id="AppComponents" />
+      <ComponentGroupRef Id="DocComponents" />
+      <ComponentGroupRef Id="StartMenuShortcutComponents" />
+      <Feature
+        Id="DesktopShortcutFeature"
+        Title="Masaustu kisayolu"
+        Level="1"
+        Description="Masaustune LocalNetChanger kisayolu ekler. Acildiginda ayar paneli gosterilir.">
+        <ComponentRef Id="DesktopShortcutComponent" />
+      </Feature>
+      <Feature
+        Id="StartupShortcutFeature"
+        Title="Windows baslangicinda calistir"
+        Level="0"
+        Description="Her Windows oturum acilisinda LocalNetChanger'i sistem tepsisinde baslatir.">
+        <ComponentRef Id="StartupShortcutComponent" />
+      </Feature>
+    </Feature>
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="LocalNetChanger" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="LocalNetChanger" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcutComponent" Guid="29A01234-5678-4567-8901-234567890123">
+        <Shortcut
+          Id="DesktopShortcut"
+          Name="LocalNetChanger"
+          Description="Windows ag IP degistirici - ayar paneli ile acilir"
+          Target="[INSTALLFOLDER]$(var.AppExe)"
+          Arguments="$(var.OpenSettingsArg)"
+          WorkingDirectory="INSTALLFOLDER"
+          Icon="AppIcon"
+          IconIndex="0" />
+        <RemoveFile Id="RemoveDesktopShortcut" Name="LocalNetChanger.lnk" On="uninstall" />
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\LocalNetChanger"
+          Name="DesktopShortcut"
+          Type="integer"
+          Value="1"
+          KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <StandardDirectory Id="StartupFolder">
+      <Component Id="StartupShortcutComponent" Guid="3AB12345-6789-4678-9012-345678901234">
+        <Shortcut
+          Id="StartupShortcut"
+          Name="LocalNetChanger"
+          Description="LocalNetChanger sistem tepsisinde baslat"
+          Target="[INSTALLFOLDER]$(var.AppExe)"
+          Arguments="$(var.TrayOnlyArg)"
+          WorkingDirectory="INSTALLFOLDER"
+          Icon="AppIcon"
+          IconIndex="0" />
+        <RemoveFile Id="RemoveStartupShortcut" Name="LocalNetChanger.lnk" On="uninstall" />
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\LocalNetChanger"
+          Name="StartupShortcut"
+          Type="integer"
+          Value="1"
+          KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <ComponentGroup Id="AppComponents" Directory="INSTALLFOLDER">
+      <Component Id="AppExe" Guid="A1E2F3A4-B5C6-4D7E-8F90-1234567890AB">
+        <File Id="AppExeFile" Source="!(bindpath.PublishDir)\LocalNetChanger.exe" KeyPath="yes" />
+      </Component>
+      <Component Id="AppDll" Guid="B2F3A4B5-C6D7-4E8F-9012-3456789012BC">
+        <File Source="!(bindpath.PublishDir)\LocalNetChanger.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="AppDeps" Guid="C3A4B5C6-D7E8-4F90-1234-5678901234CD">
+        <File Source="!(bindpath.PublishDir)\LocalNetChanger.deps.json" KeyPath="yes" />
+      </Component>
+      <Component Id="AppRuntimeConfig" Guid="D4B5C6D7-E8F9-4012-3456-7890123456DE">
+        <File Source="!(bindpath.PublishDir)\LocalNetChanger.runtimeconfig.json" KeyPath="yes" />
+      </Component>
+      <Component Id="AppIconFile" Guid="E5C6D7E8-F901-4123-4567-8901234567EF">
+        <File Source="!(bindpath.PublishDir)\icon.ico" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="DocComponents" Directory="INSTALLFOLDER">
+      <Component Id="LicenseFile" Guid="F6D7E8F9-0123-4234-5678-9012345678F0">
+        <File Source="..\license.txt" Name="LICENSE.txt" KeyPath="yes" />
+      </Component>
+      <Component Id="InfoFile" Guid="07E8F901-2345-4345-6789-012345678901">
+        <File Source="..\info.txt" Name="README-KURULUM.txt" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="StartMenuShortcutComponents" Directory="ApplicationProgramsFolder">
+      <Component Id="StartMenuShortcuts" Guid="18F90123-4567-4456-7890-123456789012">
+        <Shortcut
+          Id="ApplicationStartMenuShortcut"
+          Name="LocalNetChanger"
+          Description="Windows ag IP degistirici - ayar paneli ile acilir"
+          Target="[INSTALLFOLDER]$(var.AppExe)"
+          Arguments="$(var.OpenSettingsArg)"
+          WorkingDirectory="INSTALLFOLDER"
+          Icon="AppIcon"
+          IconIndex="0" />
+        <Shortcut
+          Id="LicenseStartMenuShortcut"
+          Name="Lisans (GPL v3)"
+          Description="GNU GPL v3 lisans metni"
+          Target="[INSTALLFOLDER]LICENSE.txt"
+          WorkingDirectory="INSTALLFOLDER" />
+        <RemoveFolder Id="RemoveApplicationProgramsFolder" Directory="ApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\LocalNetChanger"
+          Name="StartMenuShortcut"
+          Type="integer"
+          Value="1"
+          KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ui:WixUI Id="WixUI_FeatureTree" />
+
+    <CustomAction
+      Id="LaunchApplication"
+      BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
+      DllEntry="WixShellExec"
+      Execute="immediate"
+      Return="ignore"
+      Impersonate="yes" />
+
+    <InstallExecuteSequence>
+      <Custom
+        Action="LaunchApplication"
+        After="InstallFinalize"
+        Condition="NOT Installed AND WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1" />
+    </InstallExecuteSequence>
+
+  </Package>
+</Wix>
