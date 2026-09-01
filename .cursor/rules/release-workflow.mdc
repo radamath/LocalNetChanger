@@ -1,0 +1,16 @@
+---
+description: Her kod güncellemesi sonrası git push ve GitHub Release yayınla
+alwaysApply: true
+---
+
+# Release workflow
+
+LocalNetChanger projesinde anlamlı kod veya sürüm değişikliği yapıldığında kullanıcı ayrıca sormadan şunları uygula:
+
+1. Sürüm numarasını artır (`LocalNetChanger.csproj`, `installer/msi/Package.wxs`, `installer/msi/LocalNetChanger.Installer.wixproj`, `installer/build-installer.ps1`, `installer/LocalNetChanger.iss`)
+2. `installer/build-installer.ps1` ile MSI/EXE paketle
+3. Değişiklikleri commit et (Türkçe veya İngilizce, net commit mesajı)
+4. `origin/main` branch'ine push et (`git -c http.version=HTTP/1.1 push` gerekirse)
+5. GitHub Release oluştur veya güncelle: `gh release create vX.Y.Z dist/LocalNetChanger-Setup-X.Y.Z.msi` — release notlarında özet ve indirme linki
+
+ZKTECO projelerine commit/push yapma. Bu kural yalnızca LocalNetChanger (NetChanger) reposu içindir.

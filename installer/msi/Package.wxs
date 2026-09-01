@@ -9,7 +9,7 @@
   <Package
     Name="LocalNetChanger"
     Manufacturer="LocalNetChanger"
-    Version="1.0.5.0"
+    Version="1.0.8.0"
     UpgradeCode="B8E4F2A1-9C3D-4E5F-A1B2-3C4D5E6F7081"
     Scope="perMachine">
 
@@ -29,6 +29,7 @@
 
     <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT" Value="LocalNetChanger basariyla kuruldu." />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="LocalNetChanger'i simdi baslat" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
     <Property Id="WixShellExecTarget" Value="[#AppExeFile]" />
     <Property Id="WixShellExecTargetArgs" Value="$(var.OpenSettingsArg)" />
 
@@ -159,22 +160,21 @@
       </Component>
     </ComponentGroup>
 
-    <ui:WixUI Id="WixUI_FeatureTree" />
+    <UI Id="LocalNetChangerUI">
+      <ui:WixUI Id="WixUI_FeatureTree" />
+      <Publish
+        Dialog="ExitDialog"
+        Control="Finish"
+        Event="DoAction"
+        Value="LaunchApplication"
+        Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+    </UI>
 
     <CustomAction
       Id="LaunchApplication"
       BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
       DllEntry="WixShellExec"
-      Execute="immediate"
-      Return="ignore"
       Impersonate="yes" />
-
-    <InstallExecuteSequence>
-      <Custom
-        Action="LaunchApplication"
-        After="InstallFinalize"
-        Condition="NOT Installed AND WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1" />
-    </InstallExecuteSequence>
 
   </Package>
 </Wix>

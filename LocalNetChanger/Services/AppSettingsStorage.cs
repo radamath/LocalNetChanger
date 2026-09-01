@@ -63,4 +63,19 @@ public sealed class AppSettingsStorage
         Settings.StartWithWindows = enabled;
         Save();
     }
+
+    public LastNetworkChoice? GetLastNetworkChoice(AdapterCategory category) =>
+        category == AdapterCategory.Ethernet ? Settings.LastWired : Settings.LastWireless;
+
+    public void SetLastNetworkChoice(AdapterCategory category, bool isDhcp, string? profileId = null)
+    {
+        var choice = new LastNetworkChoice { IsDhcp = isDhcp, ProfileId = profileId };
+
+        if (category == AdapterCategory.Ethernet)
+            Settings.LastWired = choice;
+        else
+            Settings.LastWireless = choice;
+
+        Save();
+    }
 }

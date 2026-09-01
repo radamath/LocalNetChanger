@@ -145,7 +145,12 @@ public sealed class TrayApplicationContext : ApplicationContext
     {
         parent.DropDownItems.Clear();
 
-        var dhcpItem = new ToolStripMenuItem(Loc.MenuDhcp);
+        var last = _appSettings.GetLastNetworkChoice(category);
+
+        var dhcpItem = new ToolStripMenuItem(Loc.MenuDhcp)
+        {
+            Checked = last?.IsDhcp == true
+        };
         dhcpItem.Click += (_, _) => ApplyDhcp(category);
         parent.DropDownItems.Add(dhcpItem);
 
@@ -155,7 +160,10 @@ public sealed class TrayApplicationContext : ApplicationContext
             parent.DropDownItems.Add(new ToolStripSeparator());
             foreach (var profile in profiles)
             {
-                var item = new ToolStripMenuItem(profile.Name);
+                var item = new ToolStripMenuItem(profile.Name)
+                {
+                    Checked = last is { IsDhcp: false } && last.ProfileId == profile.Id
+                };
                 item.Click += (_, _) => ApplyProfile(profile);
                 parent.DropDownItems.Add(item);
             }
@@ -164,16 +172,32 @@ public sealed class TrayApplicationContext : ApplicationContext
 
     private void ApplyDhcp(AdapterCategory category)
     {
-        var (success, message) = NetworkService.ApplyDhcp(category);
-        if (!success)
-            _trayIcon.ShowBalloonTip(4000, Loc.AppName, message, ToolTipIcon.Error);
+        var result = NetworkService.ApplyDhcp(category);
+        if (result.AlreadyActive)
+            _trayIcon.ShowBalloonTip(4000, Loc.AppName, result.Message, ToolTipIcon.Info);
+        else if (result.Success)
+        {
+            _appSettings.SetLastNetworkChoice(category, isDhcp: true);
+            BuildCategoryMenu(category == AdapterCategory.Ethernet ? _wiredMenu : _wirelessMenu, category);
+        }
+        else
+            _trayIcon.ShowBalloonTip(4000, Loc.AppName, result.Message, ToolTipIcon.Error);
     }
 
     private void ApplyProfile(NetworkProfile profile)
     {
-        var (success, message) = NetworkService.ApplyProfile(profile);
-        if (!success)
-            _trayIcon.ShowBalloonTip(4000, Loc.AppName, message, ToolTipIcon.Error);
+        var result = NetworkService.ApplyProfile(profile);
+        if (result.AlreadyActive)
+            _trayIcon.ShowBalloonTip(4000, Loc.AppName, result.Message, ToolTipIcon.Info);
+        else if (result.Success)
+        {
+            _appSettings.SetLastNetworkChoice(profile.Category, isDhcp: false, profile.Id);
+            BuildCategoryMenu(
+                profile.Category == AdapterCategory.Ethernet ? _wiredMenu : _wirelessMenu,
+                profile.Category);
+        }
+        else
+            _trayIcon.ShowBalloonTip(4000, Loc.AppName, result.Message, ToolTipIcon.Error);
     }
 
     private void ShowSettings()

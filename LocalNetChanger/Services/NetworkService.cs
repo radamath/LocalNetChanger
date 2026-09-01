@@ -132,34 +132,35 @@ public static class NetworkService
         return true;
     }
 
-    public static (bool Success, string Message) ApplyProfile(NetworkProfile profile)
+    public static NetworkApplyResult ApplyProfile(NetworkProfile profile)
     {
         if (!TryValidateIpAddress(profile.IpAddress, out var ipError))
-            return (false, ipError);
+            return new NetworkApplyResult(false, ipError);
 
         if (!TryValidateSubnetMask(profile.SubnetMask, out var maskError))
-            return (false, maskError);
+            return new NetworkApplyResult(false, maskError);
 
         if (!TryValidateOptionalIpAddress(profile.DefaultGateway, out var gatewayError))
-            return (false, Loc.GatewayPrefix + gatewayError);
+            return new NetworkApplyResult(false, Loc.GatewayPrefix + gatewayError);
 
         if (!TryValidateOptionalIpAddress(profile.Dns1, out var dns1Error))
-            return (false, Loc.Dns1Prefix + dns1Error);
+            return new NetworkApplyResult(false, Loc.Dns1Prefix + dns1Error);
 
         if (!TryValidateOptionalIpAddress(profile.Dns2, out var dns2Error))
-            return (false, Loc.Dns2Prefix + dns2Error);
+            return new NetworkApplyResult(false, Loc.Dns2Prefix + dns2Error);
 
         if (string.IsNullOrWhiteSpace(profile.Dns1) && !string.IsNullOrWhiteSpace(profile.Dns2))
-            return (false, Loc.Dns2BeforeDns1);
+            return new NetworkApplyResult(false, Loc.Dns2BeforeDns1);
 
         var adapter = FindAdapter(profile.AdapterId, profile.AdapterName, profile.Category);
         if (adapter == null)
-        {
-            return (false, Loc.AdapterNotFound(profile.AdapterName));
-        }
+            return new NetworkApplyResult(false, Loc.AdapterNotFound(profile.AdapterName));
+
+        if (IsProfileActive(profile, adapter))
+            return new NetworkApplyResult(true, Loc.ProfileAlreadyActive(profile.Name), AlreadyActive: true);
 
         if (!AdapterNameSafePattern.IsMatch(adapter.Name))
-            return (false, Loc.AdapterNameUnsafe);
+            return new NetworkApplyResult(false, Loc.AdapterNameUnsafe);
 
         var escapedName = adapter.Name.Replace("\"", "\\\"");
         var ip = profile.IpAddress.Trim();
@@ -172,20 +173,20 @@ public static class NetworkService
 
         var addressResult = RunNetsh(addressCommand);
         if (!addressResult.Success)
-            return addressResult;
+            return new NetworkApplyResult(false, addressResult.Message);
 
         if (!string.IsNullOrWhiteSpace(profile.Dns1))
         {
             var dns1 = profile.Dns1.Trim();
             var dns1Result = RunNetsh($"interface ip set dns name=\"{escapedName}\" static {dns1} primary");
             if (!dns1Result.Success)
-                return dns1Result;
+                return new NetworkApplyResult(false, dns1Result.Message);
 
             if (!string.IsNullOrWhiteSpace(profile.Dns2))
             {
                 var dns2Result = RunNetsh($"interface ip add dns name=\"{escapedName}\" {profile.Dns2.Trim()} index=2");
                 if (!dns2Result.Success)
-                    return dns2Result;
+                    return new NetworkApplyResult(false, dns2Result.Message);
             }
         }
         else
@@ -193,10 +194,10 @@ public static class NetworkService
             RunNetsh($"interface ip set dns name=\"{escapedName}\" dhcp");
         }
 
-        return (true, $"'{profile.Name}' ayarları '{adapter.Name}' birimine uygulandı.");
+        return new NetworkApplyResult(true, $"'{profile.Name}' ayarları '{adapter.Name}' birimine uygulandı.");
     }
 
-    public static (bool Success, string Message) ApplyDhcp(AdapterCategory category)
+    public static NetworkApplyResult ApplyDhcp(AdapterCategory category)
     {
         var adapters = GetAvailableAdapters()
             .Where(a => a.Category == category)
@@ -205,33 +206,37 @@ public static class NetworkService
         if (adapters.Count == 0)
         {
             var typeName = category == AdapterCategory.Ethernet ? Loc.TypeWired.ToLowerInvariant() : Loc.TypeWireless.ToLowerInvariant();
-            return (false, Loc.NoActiveAdapter(typeName));
+            return new NetworkApplyResult(false, Loc.NoActiveAdapter(typeName));
         }
 
-        var applied = new List<string>();
-        foreach (var adapter in adapters)
-        {
-            if (!AdapterNameSafePattern.IsMatch(adapter.Name))
-                continue;
+        var usableAdapters = adapters
+            .Where(a => AdapterNameSafePattern.IsMatch(a.Name))
+            .ToList();
 
+        if (usableAdapters.Count == 0)
+            return new NetworkApplyResult(false, Loc.AdapterNameUnsafe);
+
+        var categoryLabel = category == AdapterCategory.Ethernet ? Loc.TypeWired : Loc.TypeWireless;
+        if (usableAdapters.All(IsAdapterDhcp))
+            return new NetworkApplyResult(true, Loc.DhcpAlreadyActive(categoryLabel), AlreadyActive: true);
+
+        var applied = new List<string>();
+        foreach (var adapter in usableAdapters)
+        {
             var escapedName = adapter.Name.Replace("\"", "\\\"");
             var addressResult = RunNetsh($"interface ip set address name=\"{escapedName}\" dhcp");
             if (!addressResult.Success)
-                return (false, $"'{adapter.Name}': {addressResult.Message}");
+                return new NetworkApplyResult(false, $"'{adapter.Name}': {addressResult.Message}");
 
             var dnsResult = RunNetsh($"interface ip set dns name=\"{escapedName}\" dhcp");
             if (!dnsResult.Success)
-                return (false, $"'{adapter.Name}' DNS: {dnsResult.Message}");
+                return new NetworkApplyResult(false, $"'{adapter.Name}' DNS: {dnsResult.Message}");
 
             applied.Add(adapter.Name);
         }
 
-        if (applied.Count == 0)
-            return (false, Loc.AdapterNameUnsafe);
-
-        var categoryLabel = category == AdapterCategory.Ethernet ? "Kablolu" : "Kablosuz";
         var adapterList = string.Join(", ", applied);
-        return (true, $"{categoryLabel} birim(ler) DHCP'ye alındı: {adapterList}");
+        return new NetworkApplyResult(true, $"{categoryLabel} birim(ler) DHCP'ye alındı: {adapterList}");
     }
 
     private static (bool Success, string Message) RunNetsh(string arguments)
@@ -255,10 +260,11 @@ public static class NetworkService
         try
         {
             using var process = new System.Diagnostics.Process();
-            process.StartInfo.FileName = "netsh";
+            process.StartInfo.FileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "netsh.exe");
             process.StartInfo.Arguments = arguments;
             process.StartInfo.UseShellExecute = useShellExecute;
             process.StartInfo.CreateNoWindow = true;
+            process.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
             process.StartInfo.Verb = verb ?? string.Empty;
 
             if (!useShellExecute)
@@ -307,6 +313,131 @@ public static class NetworkService
         using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
         var principal = new System.Security.Principal.WindowsPrincipal(identity);
         return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+    }
+
+    private static bool IsProfileActive(NetworkProfile profile, AdapterInfo adapter)
+    {
+        var networkInterface = FindNetworkInterface(adapter);
+        if (networkInterface == null)
+            return false;
+
+        var unicast = GetPrimaryIpv4Unicast(networkInterface);
+        if (unicast == null || unicast.PrefixOrigin == PrefixOrigin.Dhcp)
+            return false;
+
+        if (!IpEquals(unicast.Address.ToString(), profile.IpAddress))
+            return false;
+
+        if (!MaskEquals(unicast, profile.SubnetMask))
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(profile.DefaultGateway))
+        {
+            var currentGateway = networkInterface.GetIPProperties().GatewayAddresses
+                .FirstOrDefault(g => g.Address.AddressFamily == AddressFamily.InterNetwork)?.Address.ToString();
+
+            if (!IpEquals(currentGateway, profile.DefaultGateway))
+                return false;
+        }
+
+        if (!DnsMatches(networkInterface, profile))
+            return false;
+
+        return true;
+    }
+
+    private static bool IsAdapterDhcp(AdapterInfo adapter)
+    {
+        var networkInterface = FindNetworkInterface(adapter);
+        if (networkInterface == null)
+            return false;
+
+        var unicast = GetPrimaryIpv4Unicast(networkInterface);
+        return unicast?.PrefixOrigin == PrefixOrigin.Dhcp;
+    }
+
+    private static NetworkInterface? FindNetworkInterface(AdapterInfo adapter)
+    {
+        return NetworkInterface.GetAllNetworkInterfaces()
+            .FirstOrDefault(ni => string.Equals(ni.Id, adapter.Id, StringComparison.OrdinalIgnoreCase)
+                || (string.Equals(ni.Name, adapter.Name, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private static UnicastIPAddressInformation? GetPrimaryIpv4Unicast(NetworkInterface networkInterface)
+    {
+        return networkInterface.GetIPProperties().UnicastAddresses
+            .FirstOrDefault(u => u.Address.AddressFamily == AddressFamily.InterNetwork
+                && !IPAddress.IsLoopback(u.Address)
+                && !u.Address.ToString().StartsWith("169.254.", StringComparison.Ordinal));
+    }
+
+    private static bool IpEquals(string? left, string? right)
+    {
+        if (string.IsNullOrWhiteSpace(left) && string.IsNullOrWhiteSpace(right))
+            return true;
+
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+            return false;
+
+        return IPAddress.TryParse(left.Trim(), out var leftIp)
+            && IPAddress.TryParse(right.Trim(), out var rightIp)
+            && leftIp.Equals(rightIp);
+    }
+
+    private static bool MaskEquals(UnicastIPAddressInformation unicast, string profileMask)
+    {
+        if (unicast.IPv4Mask != null && IpEquals(unicast.IPv4Mask.ToString(), profileMask))
+            return true;
+
+        if (unicast.PrefixLength <= 0 || !IPAddress.TryParse(profileMask.Trim(), out var profileMaskIp))
+            return false;
+
+        var expectedPrefix = CountMaskBits(profileMaskIp);
+        return unicast.PrefixLength == expectedPrefix;
+    }
+
+    private static int CountMaskBits(IPAddress mask)
+    {
+        var bytes = mask.GetAddressBytes();
+        var bits = 0;
+        foreach (var b in bytes)
+        {
+            for (var i = 7; i >= 0; i--)
+            {
+                if ((b & (1 << i)) != 0)
+                    bits++;
+                else
+                    return bits;
+            }
+        }
+
+        return bits;
+    }
+
+    private static bool DnsMatches(NetworkInterface networkInterface, NetworkProfile profile)
+    {
+        if (string.IsNullOrWhiteSpace(profile.Dns1))
+            return true;
+
+        var currentDns = networkInterface.GetIPProperties().DnsAddresses
+            .Where(a => a.AddressFamily == AddressFamily.InterNetwork)
+            .Select(a => a.ToString())
+            .ToList();
+
+        var expectedDns = new List<string> { profile.Dns1.Trim() };
+        if (!string.IsNullOrWhiteSpace(profile.Dns2))
+            expectedDns.Add(profile.Dns2.Trim());
+
+        if (currentDns.Count != expectedDns.Count)
+            return false;
+
+        for (var i = 0; i < expectedDns.Count; i++)
+        {
+            if (!IpEquals(currentDns[i], expectedDns[i]))
+                return false;
+        }
+
+        return true;
     }
 
     private static bool ShouldExclude(NetworkInterface ni)

@@ -1,7 +1,7 @@
 <Project Sdk="WixToolset.Sdk/7.0.0">
 
   <PropertyGroup>
-    <OutputName>LocalNetChanger-Setup-1.0.5</OutputName>
+    <OutputName>LocalNetChanger-Setup-1.0.8</OutputName>
     <OutputPath>..\..\dist\</OutputPath>
     <Cultures>tr-TR;en-US</Cultures>
     <PublishDir>..\..\publish\win-x64</PublishDir>

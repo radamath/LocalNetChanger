@@ -98,6 +98,12 @@ public static class Loc
     public static string SubnetZero => T("Alt ağ maskesi sıfır olamaz.", "Subnet mask cannot be zero.");
     public static string AdminDenied => T("Yönetici izni verilmedi.", "Administrator permission was denied.");
     public static string NetworkApplyFailed => T("Ağ ayarları uygulanamadı.", "Network settings could not be applied.");
+    public static string ProfileAlreadyActive(string name) => T(
+        $"'{name}' profili zaten aktif.",
+        $"Profile '{name}' is already active.");
+    public static string DhcpAlreadyActive(string category) => T(
+        $"{category} bağlantısı zaten DHCP kullanıyor.",
+        $"{category} connection is already using DHCP.");
     public static string CommandFailed(string detail) => T(
         $"Komut çalıştırılamadı: {detail}",
         $"Command failed: {detail}");

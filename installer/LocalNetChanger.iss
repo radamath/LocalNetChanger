@@ -1,7 +1,7 @@
 ; LocalNetChanger kurulum paketi - Inno Setup 6
 
 #define MyAppName "LocalNetChanger"
-#define MyAppVersion "1.0.5"
+#define MyAppVersion "1.0.8"
 #define MyAppPublisher "LocalNetChanger"
 #define MyAppURL "https://www.gnu.org/licenses/gpl-3.0.html"
 #define MyAppExeName "LocalNetChanger.exe"
@@ -56,7 +56,7 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameter
 Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "{#TrayOnlyArg}"; Tasks: startupicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Parameters: "{#OpenSettingsArg}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent unchecked
+Filename: "{app}\{#MyAppExeName}"; Parameters: "{#OpenSettingsArg}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{userappdata}\LocalNetChanger"

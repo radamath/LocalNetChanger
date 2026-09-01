@@ -7,7 +7,7 @@ $MsiProject = Join-Path $Root "installer\msi\LocalNetChanger.Installer.wixproj"
 $IssFile = Join-Path $Root "installer\LocalNetChanger.iss"
 $PublishDir = Join-Path $Root "publish\win-x64"
 $DistDir = Join-Path $Root "dist"
-$Version = "1.0.5"
+$Version = "1.0.8"
 $MsiOutput = Join-Path $DistDir "LocalNetChanger-Setup-$Version.msi"
 $ExeOutput = Join-Path $DistDir "LocalNetChanger-Setup-$Version.exe"
 
