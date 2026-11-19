@@ -1,3 +1,4 @@
+using System.Net.NetworkInformation;
 using LocalNetChanger.Forms;
 using LocalNetChanger.Localization;
 using LocalNetChanger.Models;
@@ -16,8 +17,10 @@ public sealed class TrayApplicationContext : ApplicationContext
     private readonly ToolStripMenuItem _wiredMenu;
     private readonly ToolStripMenuItem _wirelessMenu;
     private readonly ToolStripMenuItem _exitMenu;
+    private readonly System.Windows.Forms.Timer _tooltipTimer;
     private SettingsForm? _settingsForm;
     private SynchronizationContext? _uiContext;
+    private DateTime _lastTooltipRefreshUtc = DateTime.MinValue;
 
     public TrayApplicationContext(AppSettingsStorage appSettings, bool openSettingsOnStart = false)
     {
@@ -59,9 +62,16 @@ public sealed class TrayApplicationContext : ApplicationContext
         };
 
         _trayIcon.DoubleClick += (_, _) => ShowSettings();
+        _trayIcon.MouseMove += (_, _) => UpdateTrayTooltip(force: false);
 
         ApplyTrayLocalization();
+        UpdateTrayTooltip();
         Loc.Changed += OnLanguageChanged;
+        NetworkChange.NetworkAddressChanged += OnNetworkAddressChanged;
+
+        _tooltipTimer = new System.Windows.Forms.Timer { Interval = 5000 };
+        _tooltipTimer.Tick += (_, _) => UpdateTrayTooltip();
+        _tooltipTimer.Start();
 
         BuildCategoryMenu(_wiredMenu, AdapterCategory.Ethernet);
         BuildCategoryMenu(_wirelessMenu, AdapterCategory.Wireless);
@@ -79,7 +89,12 @@ public sealed class TrayApplicationContext : ApplicationContext
     protected override void Dispose(bool disposing)
     {
         if (disposing)
+        {
             Loc.Changed -= OnLanguageChanged;
+            NetworkChange.NetworkAddressChanged -= OnNetworkAddressChanged;
+            _tooltipTimer.Stop();
+            _tooltipTimer.Dispose();
+        }
 
         base.Dispose(disposing);
     }
@@ -110,8 +125,13 @@ public sealed class TrayApplicationContext : ApplicationContext
             ApplyTrayLocalization();
             BuildCategoryMenu(_wiredMenu, AdapterCategory.Ethernet);
             BuildCategoryMenu(_wirelessMenu, AdapterCategory.Wireless);
-            _trayIcon.Text = Loc.AppName;
+            UpdateTrayTooltip();
         });
+    }
+
+    private void OnNetworkAddressChanged(object? sender, EventArgs e)
+    {
+        RunOnUi(() => UpdateTrayTooltip());
     }
 
     private void ApplyTrayLocalization()
@@ -121,6 +141,24 @@ public sealed class TrayApplicationContext : ApplicationContext
         _wiredMenu.Text = Loc.MenuWired;
         _wirelessMenu.Text = Loc.MenuWireless;
         _exitMenu.Text = Loc.MenuExit;
+    }
+
+    private void UpdateTrayTooltip(bool force = true)
+    {
+        if (!force && (DateTime.UtcNow - _lastTooltipRefreshUtc).TotalMilliseconds < 750)
+            return;
+
+        try
+        {
+            var tip = NetworkService.BuildTrayTooltip();
+            if (!string.Equals(_trayIcon.Text, tip, StringComparison.Ordinal))
+                _trayIcon.Text = tip;
+            _lastTooltipRefreshUtc = DateTime.UtcNow;
+        }
+        catch
+        {
+            _trayIcon.Text = Loc.AppName;
+        }
     }
 
     private void OnFirstIdleOpenSettings(object? sender, EventArgs e)
@@ -179,6 +217,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         {
             _appSettings.SetLastNetworkChoice(category, isDhcp: true);
             BuildCategoryMenu(category == AdapterCategory.Ethernet ? _wiredMenu : _wirelessMenu, category);
+            ScheduleTooltipRefresh();
         }
         else
             _trayIcon.ShowBalloonTip(4000, Loc.AppName, result.Message, ToolTipIcon.Error);
@@ -195,9 +234,23 @@ public sealed class TrayApplicationContext : ApplicationContext
             BuildCategoryMenu(
                 profile.Category == AdapterCategory.Ethernet ? _wiredMenu : _wirelessMenu,
                 profile.Category);
+            ScheduleTooltipRefresh();
         }
         else
             _trayIcon.ShowBalloonTip(4000, Loc.AppName, result.Message, ToolTipIcon.Error);
+    }
+
+    private void ScheduleTooltipRefresh()
+    {
+        UpdateTrayTooltip();
+        var delayed = new System.Windows.Forms.Timer { Interval = 1500 };
+        delayed.Tick += (_, _) =>
+        {
+            delayed.Stop();
+            delayed.Dispose();
+            UpdateTrayTooltip();
+        };
+        delayed.Start();
     }
 
     private void ShowSettings()
@@ -227,6 +280,8 @@ public sealed class TrayApplicationContext : ApplicationContext
     private void ExitApplication()
     {
         SingleInstanceManager.Release();
+        NetworkChange.NetworkAddressChanged -= OnNetworkAddressChanged;
+        _tooltipTimer.Stop();
         _settingsForm?.ForceClose();
         _trayIcon.Visible = false;
         _trayIcon.Dispose();

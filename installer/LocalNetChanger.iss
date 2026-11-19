@@ -1,7 +1,7 @@
 ; LocalNetChanger kurulum paketi - Inno Setup 6
 
 #define MyAppName "LocalNetChanger"
-#define MyAppVersion "1.0.8"
+#define MyAppVersion "1.0.9"
 #define MyAppPublisher "LocalNetChanger"
 #define MyAppURL "https://www.gnu.org/licenses/gpl-3.0.html"
 #define MyAppExeName "LocalNetChanger.exe"

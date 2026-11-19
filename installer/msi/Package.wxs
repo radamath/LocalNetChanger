@@ -9,7 +9,7 @@
   <Package
     Name="LocalNetChanger"
     Manufacturer="LocalNetChanger"
-    Version="1.0.8.0"
+    Version="1.0.9.0"
     UpgradeCode="B8E4F2A1-9C3D-4E5F-A1B2-3C4D5E6F7081"
     Scope="perMachine">
 

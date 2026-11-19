@@ -40,6 +40,7 @@ public static class Loc
     public static string MenuWireless => T("Kablosuz", "Wireless");
     public static string MenuDhcp => "DHCP";
     public static string MenuExit => T("Çıkış", "Exit");
+    public static string TrayNoConnection => T("Bağlı ağ yok", "No network connected");
 
     public static string ColProfile => T("Profil", "Profile");
     public static string ColType => T("Tür", "Type");

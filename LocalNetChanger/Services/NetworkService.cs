@@ -16,6 +16,11 @@ public sealed record AdapterInfo(
     public override string ToString() => Name;
 }
 
+public sealed record AdapterAddressInfo(
+    string Name,
+    AdapterCategory Category,
+    string IpAddress);
+
 public static class NetworkService
 {
     private static readonly Regex AdapterNameSafePattern = new(@"^[\w\s\-\.\(\)\[\]#]+$", RegexOptions.Compiled);
@@ -52,6 +57,88 @@ public static class NetworkService
         return adapters.FirstOrDefault(a =>
             a.Category == category &&
             string.Equals(a.Name, adapterName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Bağlı (Up) Ethernet/Wi-Fi birimlerinin güncel IPv4 adreslerini döner.
+    /// </summary>
+    public static IReadOnlyList<AdapterAddressInfo> GetConnectedAddresses()
+    {
+        return NetworkInterface.GetAllNetworkInterfaces()
+            .Where(ni => !ShouldExclude(ni) && ni.OperationalStatus == OperationalStatus.Up)
+            .Select(ni => new
+            {
+                Interface = ni,
+                Category = ResolveCategory(ni),
+                Ip = GetPrimaryIpv4Unicast(ni)?.Address.ToString()
+            })
+            .Where(x => x.Category.HasValue && !string.IsNullOrWhiteSpace(x.Ip))
+            .Select(x => new AdapterAddressInfo(
+                x.Interface.Name,
+                x.Category!.Value,
+                x.Ip!))
+            .OrderBy(a => a.Category)
+            .ThenBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>
+    /// NotifyIcon.Text en fazla 63 karakter kabul eder.
+    /// </summary>
+    public static string BuildTrayTooltip(int maxLength = 63)
+    {
+        if (maxLength < 1)
+            return string.Empty;
+
+        var addresses = GetConnectedAddresses();
+        if (addresses.Count == 0)
+            return Truncate(Loc.TrayNoConnection, maxLength);
+
+        var lines = addresses
+            .Select(a => $"{a.Name}: {a.IpAddress}")
+            .ToList();
+
+        var full = string.Join(Environment.NewLine, lines);
+        if (full.Length <= maxLength)
+            return full;
+
+        // Sığmazsa satır satır ekle; kalanı kısalt.
+        var parts = new List<string>();
+        var remaining = maxLength;
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var separatorLen = parts.Count == 0 ? 0 : Environment.NewLine.Length;
+            var available = remaining - separatorLen;
+            if (available <= 0)
+                break;
+
+            var line = lines[i];
+            if (line.Length <= available)
+            {
+                parts.Add(line);
+                remaining -= separatorLen + line.Length;
+                continue;
+            }
+
+            if (available >= 4)
+                parts.Add(Truncate(line, available));
+            break;
+        }
+
+        return parts.Count == 0
+            ? Truncate(lines[0], maxLength)
+            : string.Join(Environment.NewLine, parts);
+    }
+
+    private static string Truncate(string value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
+            return value;
+
+        if (maxLength <= 3)
+            return value[..maxLength];
+
+        return value[..(maxLength - 3)] + "...";
     }
 
     public static bool TryValidateIpAddress(string value, out string error)
